@@ -56,10 +56,37 @@
 2. RabbitMQ 特点: 高可用,扩展性,多语言客户端,管理界面.
 3. 主要的使用场景: 流量削峰,异步处理,应用解耦.
 
+#### 常用命令
+常用管理命令
+
+- 启动/停止: `systemctl start/stop rabbitmq-server`
+- 插件管理命令:
+    1. 查看插件: `rabbitmq-plugins list`
+    2. 启动禁用插件:`rabbit-plugins enable/disable plugin-name`
+    
+#### 管理界面的使用
 
 
 
 
+
+#### rabbitMQ 基础知识
+- 登录用户名和账号都是 guest
+- 端口: 15672
+
+### 3.2 核心概念
+
+- VirtualHost 数据隔离的作用
+- Connection
+- Exchange 交换机
+- Channel 
+- Queue 队列 绑定交换机 或者临时存储消息
+- Binding
+
+#### 3.3 快速入门
+##### 6 种工作模式
+1. Simple 模式
+    最简单的工作模式 p->[==]->c
 ---
 
 - [ ] CDN
