@@ -6,6 +6,12 @@ import (
 	"log"
 )
 
+// exchange modes
+const (
+	exchangeFanout = "fanout"
+	exchangeDirect = "direct"
+)
+
 // simple mode
 // account:passwd@addr:port/vhost
 const MqURL = "amqp://suzl:rabbit@127.0.0.1:5672/go-sec"
@@ -23,7 +29,7 @@ type RabbitMQ struct {
 func NewRabbitMQ(queueName string, exchange string, key string) *RabbitMQ {
 	rabbitMq := &RabbitMQ{QueueName: queueName, Exchange: exchange, Key: key, MqUrl: MqURL}
 	var err error
-	// 创建连接
+	// create connection
 	rabbitMq.conn, err = amqp.Dial(rabbitMq.MqUrl)
 	rabbitMq.failOnErr(err, "error during NewSimpleRabbitMq: Error during get rabbit mq connection.")
 	rabbitMq.channel, err = rabbitMq.conn.Channel()
@@ -41,7 +47,7 @@ func (r *RabbitMQ) Destroy() {
 func (r *RabbitMQ) failOnErr(err error, message string) {
 	if err != nil {
 		log.Fatalf("%s:%s", message, err)
-		panic(fmt.Sprintf("%s:%s", message, err))
+		// panic(fmt.Sprintf("%s:%s", message, err))
 	}
 }
 
@@ -51,7 +57,7 @@ func NewSimpleRabbitMq(queueName string) *RabbitMQ {
 	return NewRabbitMQ(queueName, "", "")
 }
 
-// Send msg of simple mode
+// 1.1 Send msg of simple mode
 func (r *RabbitMQ) SimplePublish(message string) {
 	// 1. apply for queue,if no queue, will create ,if there is queue
 	_, err := r.channel.QueueDeclare(r.QueueName, false, false, false, false, nil)
@@ -66,6 +72,7 @@ func (r *RabbitMQ) SimplePublish(message string) {
 	})
 }
 
+// 1.2 Simple mode consume
 func (r *RabbitMQ) SimpleConsume() {
 	// 1. declare queue
 	_, err := r.channel.QueueDeclare(r.QueueName, false, false, false, false, nil)
@@ -91,7 +98,7 @@ func (r *RabbitMQ) SimpleConsume() {
 	<-forever
 }
 
-// pub/sub mode
+// 2. Pub/Sub mode
 func NewRabbitMqPubSub(exchangeName string) *RabbitMQ {
 	// create rabbit mq instance
 	rabbitMQ := NewRabbitMQ("", exchangeName, "")
@@ -103,10 +110,10 @@ func NewRabbitMqPubSub(exchangeName string) *RabbitMQ {
 	return rabbitMQ
 }
 
-// publishing in publish mode
+// 2.1 Publishing msg in publish mode
 func (r *RabbitMQ) PublishPub(message string) {
 	// try to create the exchange
-	err := r.channel.ExchangeDeclare(r.Exchange, "fanout", true, false, false, false, nil)
+	err := r.channel.ExchangeDeclare(r.Exchange, exchangeFanout, true, false, false, false, nil)
 	r.failOnErr(err, "Fail to declare an exchange")
 	err = r.channel.Publish(r.Exchange, "", false, false, amqp.Publishing{
 		ContentType: "text/plain",
@@ -115,11 +122,11 @@ func (r *RabbitMQ) PublishPub(message string) {
 	r.failOnErr(err, "error during publish message in pub/sub mode")
 }
 
-// consume mode in pub/sub mode
+// 2.2 Consume mode in pub/sub mode
 func (r *RabbitMQ) ReceiveSub() {
 	// try to create exchange
 	err := r.channel.ExchangeDeclare(
-		r.Exchange, "fanout", true, false, false, false, nil)
+		r.Exchange, exchangeFanout, true, false, false, false, nil)
 	r.failOnErr(err, "error during rece message in pub/sub message")
 
 	queue, err := r.channel.QueueDeclare("", false, false, true, false, nil)
@@ -141,7 +148,7 @@ func (r *RabbitMQ) ReceiveSub() {
 	<-exitChan
 }
 
-// routing mode
+// 3. Routing mode
 func NewRoutingRabbitMQ(exchangeName string, routingKey string) *RabbitMQ {
 	mq := NewRabbitMQ("", exchangeName, routingKey)
 	var err error
@@ -153,9 +160,10 @@ func NewRoutingRabbitMQ(exchangeName string, routingKey string) *RabbitMQ {
 	return mq
 }
 
+// 3.1 Routing mode publishing msg
 func (r *RabbitMQ) PublishingRouting(message string) {
 	// type to direct
-	err := r.channel.ExchangeDeclare(r.Exchange, "direct", true, false, false, false, nil)
+	err := r.channel.ExchangeDeclare(r.Exchange, exchangeDirect, true, false, false, false, nil)
 	r.failOnErr(err, "err during exchange declare in publishing routing")
 
 	// send msg routing key
@@ -163,11 +171,11 @@ func (r *RabbitMQ) PublishingRouting(message string) {
 		ContentType: "text/plain",
 		Body:        []byte(message),
 	})
-
 }
 
+// 3.2 Routing recv msg
 func (r *RabbitMQ) RecvRouting() {
-	err := r.channel.ExchangeDeclare(r.Exchange, "direct", true, false, false, false, nil)
+	err := r.channel.ExchangeDeclare(r.Exchange, exchangeDirect, true, false, false, false, nil)
 	r.failOnErr(err, "error during declare an exchange")
 	queue, err := r.channel.QueueDeclare("", false, false, true, false, nil)
 
